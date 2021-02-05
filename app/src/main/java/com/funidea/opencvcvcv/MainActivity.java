@@ -3,7 +3,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.hardware.Camera;
 import android.os.Bundle;
 import android.annotation.TargetApi;
 import android.content.pm.PackageManager;
@@ -11,11 +10,14 @@ import android.os.Build;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.TextView;
+
 import org.opencv.android.BaseLoaderCallback;
 
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 
 import java.util.Collections;
@@ -33,11 +35,16 @@ public class MainActivity extends AppCompatActivity
 
     private CameraBridgeViewBase mOpenCvCameraView;
 
-    public native int opencvround(long matAddrInput, long matAddrResult);
-    public native int opencvred(long matAddrInput, long matAddrResult);
+    //public native int opencvround(long matAddrInput, long matAddrResult);
+    public native String opencvred(long matAddrInput, long matAddrResult);
     public native int opencvblue(long matAddrInput, long matAddrResult);
     public native int opencvboth(long matAddrInput, long matAddrResult);
 
+    //동작 측정 함수
+    public BallFunction ballFunction;
+
+    //동작 형태, 개수를 나타내는 TEXTVIEW
+    TextView ball_textview;
 
     static {
         System.loadLibrary("opencv_java3");
@@ -63,33 +70,26 @@ public class MainActivity extends AppCompatActivity
     };
 
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
-                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.activity_main);
 
         mOpenCvCameraView = (CameraBridgeViewBase)findViewById(R.id.activity_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
+        mOpenCvCameraView.setCameraIndex(1);
 
-        mOpenCvCameraView.setCameraIndex(1); // front-camera(1),  back-camera(0)
-
+        ball_textview = findViewById(R.id.ball_textview);
 
     }
 
-    @Override
-    public void onPause()
-    {
-        super.onPause();
-        if (mOpenCvCameraView != null)
-            mOpenCvCameraView.disableView();
-    }
 
     @Override
     public void onResume()
@@ -100,9 +100,21 @@ public class MainActivity extends AppCompatActivity
             Log.d(TAG, "onResume :: Internal OpenCV library not found.");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_2_0, this, mLoaderCallback);
         } else {
-            Log.d(TAG, "onResum :: OpenCV library found inside package. Using it!");
+            Log.d(TAG, "onResume :: OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
+
+        ball_textview.setText("저글링 개수 : "+String.valueOf(BallInformation.ball_count));
+
+    }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        if (mOpenCvCameraView != null)
+            mOpenCvCameraView.disableView();
+
     }
 
 
@@ -111,6 +123,10 @@ public class MainActivity extends AppCompatActivity
 
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
+
+        BallInformation.ball_position = 0;
+        BallInformation.ball_count = 0;
+        BallInformation.ball_arraylist.clear();
     }
 
     @Override
@@ -126,19 +142,109 @@ public class MainActivity extends AppCompatActivity
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
+
+
         matInput = inputFrame.rgba();
+
+        //카메라 mirror image
+
+
+        Core.flip(matInput, matInput, 1);
 
         if ( matResult == null )
 
             matResult = new Mat(matInput.rows(), matInput.cols(), matInput.type());
 
-        //int a = opencvround(matInput.getNativeObjAddr(), matResult.getNativeObjAddr());
-        //int a = opencvred(matInput.getNativeObjAddr(), matResult.getNativeObjAddr());
+        String opencvred = opencvred(matInput.getNativeObjAddr(), matResult.getNativeObjAddr());
         //int a = opencvblue(matInput.getNativeObjAddr(), matResult.getNativeObjAddr());
-        int a = opencvboth(matInput.getNativeObjAddr(), matResult.getNativeObjAddr());
-        Log.d(TAG, "onCameraFrame: " + a);
+        //int a = opencvboth(matInput.getNativeObjAddr(), matResult.getNativeObjAddr());
+        String[] opencvred_array = opencvred.split(",");
+
+//        Log.d(TAG, "빨간공 x,y좌표: " + opencvred);
+//        Log.d(TAG, "빨간공  x좌표: " + opencvred_array[0]);
+//        Log.d(TAG, "빨간공  y좌표: " + opencvred_array[1]);
+
+        int red_x = Integer.parseInt(opencvred_array[0]);
+        int red_y = Integer.parseInt(opencvred_array[1]);
+
+
+        if(red_x !=0 && red_y !=0){
+
+            Log.d(TAG, "빨간공: 추적 가능");
+
+            if(red_x>360 && red_y<240){
+                Log.d(TAG, "빨간공: 1사분면");
+                Log.d(TAG, "빨간공  x좌표: " + opencvred_array[0]);
+                Log.d(TAG, "빨간공  y좌표: " + opencvred_array[1]);
+
+                BallInformation.ball_position = 1;
+
+            }else if(red_x<360 && red_y<240){
+                Log.d(TAG, "빨간공: 2사분면");
+                Log.d(TAG, "빨간공  x좌표: " + opencvred_array[0]);
+                Log.d(TAG, "빨간공  y좌표: " + opencvred_array[1]);
+
+                BallInformation.ball_position = 2;
+
+            }else if(red_x<360 && red_y>240){
+                Log.d(TAG, "빨간공: 3사분면");
+                Log.d(TAG, "빨간공  x좌표: " + opencvred_array[0]);
+                Log.d(TAG, "빨간공  y좌표: " + opencvred_array[1]);
+
+                BallInformation.ball_position = 3;
+
+            }else if(red_x>360 && red_y>240){
+                Log.d(TAG, "빨간공: 4사분면");
+                Log.d(TAG, "빨간공  x좌표: " + opencvred_array[0]);
+                Log.d(TAG, "빨간공  y좌표: " + opencvred_array[1]);
+
+                BallInformation.ball_position = 4;
+            }
+
+            ballFunction = new BallFunction();
+
+            //저글링 1단계 (위아래)
+            //ballFunction.step1();
+            //저글링 2단계 (양옆)
+            ballFunction.step2();
+            //저글링 3단계 (삼각형)
+            //ballFunction.step3();
+            //저글링 4단계 (산모양)
+            //ballFunction.step4();
+
+
+            //개수 TEXTVIEW에 나타내기
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    runOnUiThread(new Runnable(){
+                        @Override
+                        public void run() {
+                            Log.d(TAG, "저글링 개수 쓰레드");
+                            ball_textview.setText("저글링 개수 : "+String.valueOf(BallInformation.ball_count));
+                        }
+                    });
+                }
+            }).start();
+
+
+
+
+        }else{
+            Log.d(TAG, "빨간공: 추적 불가");
+            //공 포지션 0
+            BallInformation.ball_position = 0;
+            //공 위치 배열 Clear
+            BallInformation.ball_arraylist.clear();
+        }
+
+
+
+
+
         return matResult;
     }
+
 
 
     protected List<? extends CameraBridgeViewBase> getCameraViewList() {
@@ -177,6 +283,8 @@ public class MainActivity extends AppCompatActivity
             onCameraPermissionGranted();
         }
     }
+
+
 
     @Override
     @TargetApi(Build.VERSION_CODES.M)

@@ -5,15 +5,41 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-
-    android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <org.opencv.android.JavaCameraView
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        opencv:camera_id="any"
-        android:visibility="gone"
-        android:id="@+id/activity_surface_view" />
+        android:layout_height="match_parent">
+
+
+        <org.opencv.android.JavaCameraView
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            opencv:camera_id="any"
+            android:visibility="gone"
+            android:id="@+id/activity_surface_view" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+           >
+
+           <TextView
+            android:id="@+id/ball_textview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="저글링"
+            android:layout_margin="10dp"
+            android:textSize="30dp"
+            android:textColor="@color/white">
+
+        </TextView>
+
+        </LinearLayout>
+
+
+    </FrameLayout>
+
+
 
 </LinearLayout>

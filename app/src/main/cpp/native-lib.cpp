@@ -12,45 +12,9 @@
 using namespace cv;
 using namespace std;
 
-extern "C"
-JNIEXPORT int JNICALL
-Java_com_funidea_opencvcvcv_MainActivity_opencvround(JNIEnv *env, jobject thiz,
-                                                    jlong mat_addr_input, jlong mat_addr_result) {
-    Mat &img_input = *(Mat *) mat_addr_input;
-    Mat &img_output = *(Mat *) mat_addr_result;
-    //ret, img_color = cap.read()
-
-
-    cvtColor(img_input, img_input,COLOR_BGR2GRAY);
-
-
-    Mat img_houghC;
-    img_houghC = img_input;
-
-    vector<Vec3f> circles;
-    HoughCircles(img_houghC, circles, HOUGH_GRADIENT, 1, 70, 60, 80, 0, 0);
-
-    cvtColor(img_houghC, img_houghC,COLOR_BGR2HSV);
-
-    for (size_t i = 0; i < circles.size(); i++)
-    {
-        Vec3i c = circles[i];
-        Point center(c[0], c[1]);
-        int radius = c[2];
-
-        circle(img_houghC, center, radius, Scalar(0, 255, 0), 20);
-        circle(img_houghC, center, 2, Scalar(0, 0, 255), 20);
-    }
-
-
-    img_output = img_houghC;
-
-    //리턴값 필요
-    return 0;
-}
 
 extern "C"
-JNIEXPORT int JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_funidea_opencvcvcv_MainActivity_opencvred(JNIEnv *env, jobject thiz,
                                                          jlong mat_addr_input,
                                                          jlong mat_addr_result) {
@@ -114,6 +78,8 @@ Java_com_funidea_opencvcvcv_MainActivity_opencvred(JNIEnv *env, jobject thiz,
     int max1 = -1;
     int max_index1 = -1;
 
+    int center_x1 = 0;
+    int center_y1 = 0;
 
     for (int i = 1; i < nlabels1; i++) {
 
@@ -136,8 +102,8 @@ Java_com_funidea_opencvcvcv_MainActivity_opencvred(JNIEnv *env, jobject thiz,
     if (max_index1 != -1) {
 
 
-        int center_x1 = centroids1.at<double>(max_index1, 0);
-        int center_y1 = centroids1.at<double>(max_index1, 1);
+        center_x1 = centroids1.at<double>(max_index1, 0);
+        center_y1 = centroids1.at<double>(max_index1, 1);
 
         int left1 = stats1.at<int>(max_index1, CC_STAT_LEFT);
         int top1 = stats1.at<int>(max_index1, CC_STAT_TOP);
@@ -147,19 +113,21 @@ Java_com_funidea_opencvcvcv_MainActivity_opencvred(JNIEnv *env, jobject thiz,
 
         if ((width1 > 40) & (40 < height1)) {
 
-            rectangle(img_frame, Point(left1, top1), Point(left1 + width1, top1 + height1), Scalar(255, 0, 0), 5);
-
+            //rectangle(img_frame, Point(left1, top1), Point(left1 + width1, top1 + height1), Scalar(255, 0, 0), 5);
+            circle(img_frame, Point(center_x1, center_y1), 20, Scalar(255,255,255), -1, 8, 0);
         }
 
     }
 
 
-
-
     img_output = img_frame;
 
-    //리턴값 필요
-    return 0;
+
+    //convert c-string to java-string
+    std::string msg = to_string(center_x1) + ","+ to_string(center_y1);
+    jstring ret = env->NewStringUTF(msg.c_str());
+    return ret;
+
 }
 
 extern "C"
@@ -169,14 +137,14 @@ Java_com_funidea_opencvcvcv_MainActivity_opencvblue(JNIEnv *env, jobject thiz,
                                                         jlong mat_addr_result) {
     Mat &img_input = *(Mat *) mat_addr_input;
     Mat &img_output = *(Mat *) mat_addr_result;
-    //ret, img_color = cap.read()
 
-    Scalar red(0, 0, 255);
 
-    Mat rgb_color = Mat(1, 1, CV_8UC3, red);
-    Mat hsv_color;
+//    // 이 부분은 필요 없는듯
+//    Scalar red(0, 0, 255);
+//    Mat rgb_color = Mat(1, 1, CV_8UC3, red);
+//    Mat hsv_color;
+//    cvtColor(rgb_color, hsv_color, COLOR_BGR2HSV);
 
-    cvtColor(rgb_color, hsv_color, COLOR_BGR2HSV);
 
     Mat img_frame = img_input;
     Mat img_hsv;
@@ -193,7 +161,8 @@ Java_com_funidea_opencvcvcv_MainActivity_opencvblue(JNIEnv *env, jobject thiz,
 
     //inRange(img_hsv, Scalar(low_hue1, 50, 50), Scalar(high_hue1, 255, 255), img_mask1);
     //img_mask1 = inRange(img_hsv, lower_red, upper_red)
-    inRange(img_hsv, Scalar(hue_blue - 10, 70, 70), Scalar(hue_blue + 10, 255, 255), img_mask1);
+    inRange(img_hsv, Scalar(hue_blue -10, 70, 70), Scalar(hue_blue + 10, 255, 255), img_mask1);
+
 
     /////////////////////////////////////////////////////////////////
 
@@ -404,3 +373,40 @@ Java_com_funidea_opencvcvcv_MainActivity_opencvboth(JNIEnv *env, jobject thiz,
     //리턴값 필요
     return 0;
 }
+
+//extern "C"
+//JNIEXPORT int JNICALL
+//Java_com_funidea_opencvcvcv_MainActivity_opencvround(JNIEnv *env, jobject thiz,
+//                                                     jlong mat_addr_input, jlong mat_addr_result) {
+//    Mat &img_input = *(Mat *) mat_addr_input;
+//    Mat &img_output = *(Mat *) mat_addr_result;
+//    //ret, img_color = cap.read()
+//
+//
+//    cvtColor(img_input, img_input,COLOR_BGR2GRAY);
+//
+//
+//    Mat img_houghC;
+//    img_houghC = img_input;
+//
+//    vector<Vec3f> circles;
+//    HoughCircles(img_houghC, circles, HOUGH_GRADIENT, 1, 70, 60, 80, 0, 0);
+//
+//    cvtColor(img_houghC, img_houghC,COLOR_BGR2HSV);
+//
+//    for (size_t i = 0; i < circles.size(); i++)
+//    {
+//        Vec3i c = circles[i];
+//        Point center(c[0], c[1]);
+//        int radius = c[2];
+//
+//        circle(img_houghC, center, radius, Scalar(0, 255, 0), 20);
+//        circle(img_houghC, center, 2, Scalar(0, 0, 255), 20);
+//    }
+//
+//
+//    img_output = img_houghC;
+//
+//    //리턴값 필요
+//    return 0;
+//}
